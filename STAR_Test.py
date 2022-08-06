@@ -10,6 +10,9 @@ import pandas as pd
 import numpy as np
 from STAR import STAR, TrueTie
 import pytest
+from hypothesis import given, settings
+from hypothesis.strategies import integers, tuples
+from hypothesis.extra.numpy import arrays
 
 
 class TestSTAR:
@@ -240,6 +243,32 @@ class TestSTAR:
         results = STAR(ballots)
         assert isinstance(results['elected'][0], TrueTie)
         assert set(results['elected'][0].tied) == {0, 1, 2}
+
+
+
+def score_ballots(min_cands=1, max_cands=25, min_voters=1, max_voters=100):
+    """
+    Strategy to generate score/rated ballot elections
+    """
+    n_cands = integers(min_value=min_cands, max_value=max_cands)
+    n_voters = integers(min_value=min_voters, max_value=max_voters)
+    return arrays(np.uint, tuples(n_voters, n_cands), elements=integers(0, 99))
+
+
+@given(ballots=score_ballots(min_cands=1, max_cands=25,
+                             min_voters=1, max_voters=100))
+@settings(max_examples=500, deadline=None)
+def test_legit_winner(ballots):
+    n_cands = ballots.shape[1]
+    cands = [str(x) for x in range(n_cands)]
+    ballots = pd.DataFrame(data=ballots, columns=cands)
+    winner = STAR(ballots)
+    assert isinstance(winner, (str, TrueTie))
+    if isinstance(winner, str):
+        assert winner in cands
+    else:
+        for finalist in winner.tied:
+            assert finalist in cands
 
 
 if __name__ == '__main__':
