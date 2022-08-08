@@ -245,10 +245,9 @@ class TestSTAR:
         assert set(results['elected'][0].tied) == {0, 1, 2}
 
 
-
 def score_ballots(min_cands=1, max_cands=25, min_voters=1, max_voters=100):
     """
-    Strategy to generate score/rated ballot elections
+    Strategy to generate score/rated ballot elections.
     """
     n_cands = integers(min_value=min_cands, max_value=max_cands)
     n_voters = integers(min_value=min_voters, max_value=max_voters)
@@ -257,18 +256,27 @@ def score_ballots(min_cands=1, max_cands=25, min_voters=1, max_voters=100):
 
 @given(ballots=score_ballots(min_cands=1, max_cands=25,
                              min_voters=1, max_voters=100))
-@settings(max_examples=500, deadline=None)
+@settings(deadline=500)  # Can take up to ~380 ms
 def test_legit_winner(ballots):
     n_cands = ballots.shape[1]
     cands = [str(x) for x in range(n_cands)]
     ballots = pd.DataFrame(data=ballots, columns=cands)
-    winner = STAR(ballots)
-    assert isinstance(winner, (str, TrueTie))
-    if isinstance(winner, str):
-        assert winner in cands
+    results = STAR(ballots)
+
+    assert isinstance(results, dict)
+
+    elected = results['elected']
+    assert isinstance(elected, list)
+    assert len(elected) <= n_cands
+    if isinstance(elected[0], TrueTie):
+        assert set(elected[0].tied) <= set(cands)
+        assert elected[0].elected == []
     else:
-        for finalist in winner.tied:
-            assert finalist in cands
+        assert set(elected) <= set(cands)
+
+    round_results = results['round_results']
+    assert isinstance(round_results, list)
+    assert isinstance(round_results[0], dict)
 
 
 if __name__ == '__main__':
