@@ -67,10 +67,10 @@ def pairwise_winner(a: pd.Series, b: pd.Series):
         return 0
 
 def has_defeat(pairwise_matrix: pd.DataFrame, a):
-    for b in pairwise_matrix.columns:
-        if pairwise_matrix.loc[b][a] == 1:
-            return 1
-    return 0
+    return next(
+        (1 for b in pairwise_matrix.columns if pairwise_matrix.loc[b][a] == 1),
+        0,
+    )
 
 def fivestar(ballots: pd.DataFrame):
     fstars = (ballots == ballots.max().max()).sum()
@@ -106,15 +106,15 @@ def default_runoff_tiebreaker(summary_data: SummaryData):
 
 def Run_STAR_Round(summary_data: SummaryData, scoring_tiebreaker=default_scoring_tiebreaker, runoff_tiebreaker=default_runoff_tiebreaker):
     # If there is only one candidate, elect them
-    
+
     round_results = {'winners':[], 'runner_up':[], 'logs':[]}
-    
+
     if len(summary_data.score_sums.index) == 1:
         round_results['winners'] = summary_data.score_sums.index
         round_results['logs'].append({'top_score': summary_data.score_sums.index})
         round_results['logs'].append({'runoff_candidates': summary_data.score_sums.index})
         return round_results
- 
+
     runoff_candidates = []
     while len(runoff_candidates) < 2:
 
@@ -130,7 +130,7 @@ def Run_STAR_Round(summary_data: SummaryData, scoring_tiebreaker=default_scoring
             if isinstance(w, TrueTie):
                 round_results['logs'].append({'score_true_tie': w})
 
-                if len(w.tied) == 2 and len(runoff_candidates) == 0:
+                if len(w.tied) == 2 and not runoff_candidates:
                     runoff_candidates.extend(w.tied)
 
                 else:
@@ -141,7 +141,7 @@ def Run_STAR_Round(summary_data: SummaryData, scoring_tiebreaker=default_scoring
 
             else:
                 runoff_candidates.extend([w])
-    
+
     round_results['logs'].append({'runoff_candidates': runoff_candidates})
     # At this point, either we have already exited or runoff_candidates contains exactly two candidates
     a,b = runoff_candidates
@@ -149,24 +149,21 @@ def Run_STAR_Round(summary_data: SummaryData, scoring_tiebreaker=default_scoring
     if summary_data.pairwise_matrix.loc[a][b] == 1:
         round_results['winners'] = [a]
         round_results['runner_up'] = b
-        return round_results
     elif summary_data.pairwise_matrix.loc[b][a] == 1:
         round_results['winners'] = [b]
         round_results['runner_up'] = a
-        return round_results
     else:
         runoff_tiebreaker_results = runoff_tiebreaker(copy.deepcopy(summary_data).keep(runoff_candidates))
         if runoff_tiebreaker_results == a:
             round_results['winners'] = [a]
             round_results['runner_up'] = b
-            return round_results
         elif runoff_tiebreaker_results == b:
             round_results['winners'] = [b]
             round_results['runner_up'] = a
-            return round_results
         else:
             round_results['winners'] = runoff_tiebreaker_results
-            return round_results
+
+    return round_results
 
 def STAR(input_data: Union[pd.DataFrame,SummaryData], numwinners=1, scoring_tiebreaker=default_scoring_tiebreaker, runoff_tiebreaker=default_runoff_tiebreaker):
     """
@@ -227,13 +224,13 @@ def STAR(input_data: Union[pd.DataFrame,SummaryData], numwinners=1, scoring_tieb
         if len(input_data.scores.index) < numwinners:
             raise InvalidElection("Not enough candidates to fill desired number of seats")
         summary_data = input_data
+    elif input_data.shape[1] < numwinners:
+        raise InvalidElection("Not enough candidates to fill desired number of seats")
     else:
-        if input_data.shape[1] < numwinners:
-            raise InvalidElection("Not enough candidates to fill desired number of seats")
         summary_data = get_summary_data(input_data)
-    
+
     while len(results['elected']) < numwinners:
-        
+
         eligible = copy.deepcopy(summary_data).drop(results['elected'])
         round_results = Run_STAR_Round(eligible, scoring_tiebreaker=scoring_tiebreaker, runoff_tiebreaker=runoff_tiebreaker)
         results['round_results'].append(round_results)
@@ -249,5 +246,5 @@ def STAR(input_data: Union[pd.DataFrame,SummaryData], numwinners=1, scoring_tieb
                 return results
         else:
             results['elected'].extend(round_results['winners'])
-    
+
     return results
