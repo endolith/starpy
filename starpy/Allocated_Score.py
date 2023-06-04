@@ -1,15 +1,15 @@
 import pandas as pd
-import numpy as np
+from fractions import Fraction
 
 def Allocated_Score(K, W, S):
 
     #Normalize score matrix
-    ballots = pd.DataFrame(S.values/K, columns=S.columns)
+    ballots = pd.DataFrame(S.applymap(Fraction) / K, columns=S.columns)
 
     #Find number of voters and quota size
     V = ballots.shape[0]
-    quota = V/W
-    ballot_weight = pd.Series(np.ones(V),name='weights')
+    quota = Fraction(V, W)
+    ballot_weight = pd.Series([Fraction(1)]*V,name='weights')
 
     #Populate winners in a loop
     winner_list = []
@@ -19,8 +19,11 @@ def Allocated_Score(K, W, S):
 
         #Select winner
         weighted_sums = weighted_scores.sum()
-        #print(f'\nWeighted scores:\n{weighted_sums.map("{:.20f}".format)}')
-        w = weighted_sums.idxmax()
+        #print(f'\nWeighted scores:\n{weighted_sums}')
+
+        # Get the (candidate, score) pair with the maximum score.
+        # If multiple candidates are tied, the first will be returned.
+        w = max(weighted_sums.items(), key=lambda x: x[1])[0]
         #print(f'\nWinner: {w}')
 
         #Add winner to list
@@ -41,7 +44,7 @@ def Allocated_Score(K, W, S):
 
         #Exhaust all ballots above split point
         if spent_above>0:
-            cand_df.loc[cand_df[w] > split_point, 'weights'] = 0.0
+            cand_df.loc[cand_df[w] > split_point, 'weights'] = Fraction(0)
 
         #if split point = 0 then the winner did not get a full quota of support
         #otherwise there is a surplus
