@@ -26,6 +26,7 @@ def Allocated_Score(K, W, S):
 
         # Get the (candidate, score) pair with the maximum score.
         # If multiple candidates are tied, the first will be returned.
+        # (Candidate order should be randomized before counting to avoid bias.)
         w = max(weighted_sums.items(), key=lambda x: x[1])[0]
         #print(f'\nWinner: {w}')
 
