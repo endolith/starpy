@@ -3,6 +3,9 @@ from fractions import Fraction
 
 def Allocated_Score(K, W, S):
 
+    if not (S % 1 == 0).all().all():
+        raise ValueError("All values in score matrix S must be integers")
+
     #Normalize score matrix
     ballots = pd.DataFrame(S.applymap(Fraction) / K, columns=S.columns)
 
