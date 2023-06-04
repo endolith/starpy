@@ -18,8 +18,10 @@ def Allocated_Score(K, W, S):
         weighted_scores = ballots.multiply(ballot_weight, axis="index")
 
         #Select winner
-        w = weighted_scores.sum().idxmax()
-        #print('winner',w)
+        weighted_sums = weighted_scores.sum()
+        #print(f'\nWeighted scores:\n{weighted_sums.map("{:.20f}".format)}')
+        w = weighted_sums.idxmax()
+        #print(f'\nWinner: {w}')
 
         #Add winner to list
         winner_list.append(w)
